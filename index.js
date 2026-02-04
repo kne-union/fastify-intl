@@ -40,7 +40,7 @@ module.exports = fp(async (fastify, options) => {
   }
   if (fastify.namespace && fastify.namespace.modules) {
     Object.keys(fastify.namespace.modules).forEach(name => {
-      loadMessage(fastify.namespace[name]?.locale, name);
+      loadMessage(fastify.namespace.modules?.[name]?.locale, name);
     });
   }
 
@@ -51,6 +51,7 @@ module.exports = fp(async (fastify, options) => {
   if (!fastify.hasDecorator(options.name)) {
     fastify.register(require('@kne/fastify-namespace'), {
       name: options.name,
+      options,
       modules: [
         [
           'createIntl',
@@ -117,7 +118,14 @@ module.exports = fp(async (fastify, options) => {
             return result;
           }
         ]
-      ]
+      ],
+      onMount: name => {
+        if (name === options.name) {
+          return;
+        }
+        const locale = fastify.namespace.modules?.[name]?.locale;
+        locale && loadMessage(locale, name);
+      }
     });
     fastify.addHook('preHandler', async request => {
       request.locale = fastify[options.name].getRequestLocale(request);

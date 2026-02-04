@@ -17,10 +17,7 @@
 | request.locale | 当前请求的语言环境 | string |
 | request.intl | 国际化格式化对象 | IntlShape |
 | request.moduleName | 当前模块名称 | string |
-
 ### 方法
-
-#### createIntl(locale, name)
 
 创建一个国际化格式化实例。
 
@@ -41,7 +38,7 @@
 
 返回值：语言环境字符串
 
-检测顺序：query.language → cookies.language → headers.language → headers.accept-language → defaultLocale
+检测顺序：query.language / query.lang → cookies.x-user-locale / cookies.x-client-language → headers.x-user-locale / headers.x-client-language → headers.accept-language → defaultLocale
 
 #### request.t(id, values)
 

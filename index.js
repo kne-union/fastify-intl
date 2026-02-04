@@ -101,7 +101,15 @@ module.exports = fp(async (fastify, options) => {
               return localeCache.get(cacheKey);
             }
 
-            const lang = request.query?.language || request.cookies?.language || request.headers?.['language'] || request.headers?.['accept-language']?.split(',')[0] || options.defaultLocale;
+            const lang =
+              request.query?.lang ||
+              request.query?.language ||
+              request.cookies?.['x-user-locale'] ||
+              request.cookies?.['x-client-language'] ||
+              request.headers?.['x-user-locale'] ||
+              request.headers?.['x-client-language'] ||
+              request.headers?.['accept-language']?.split(',')[0] ||
+              options.defaultLocale;
 
             const result = options.acceptLanguage === '*' || options.acceptLanguage.split(',').includes(lang) ? lang : options.defaultLocale;
 

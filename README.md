@@ -77,12 +77,6 @@ await fastify.register(fastifyIntl, {
 });
 ```
 
-**缓存机制：**
-- `requestMessages` 函数会根据 `locale` 和 `name` 参数自动缓存加载的消息
-- 首次调用 `createIntl(locale, name)` 时会触发远程加载
-- 相同 `locale` 和 `name` 的后续调用会直接使用缓存，不会重复请求
-- 缓存 key 格式为 `${locale}:${name}`
-
 ### 与命名空间集成
 
 ```javascript
@@ -225,6 +219,42 @@ await fastify.register(fastifyIntl, {
 | defaultMessages | 默认翻译消息对象 | object | {} |
 | requestMessages | 动态加载翻译消息的函数，支持按 locale 和 name 缓存 | function\|null | null |
 | cacheSize | Intl 缓存大小 | number | 100 |
+
+#### requestMessages 说明
+
+`requestMessages` 函数用于动态加载远程翻译消息。该函数会根据 `locale` 和 `name` 参数进行缓存，避免重复加载。
+
+**函数签名：**
+```typescript
+requestMessages(params: {
+  locale: string;
+  name: string;
+}): Promise<Record<string, string>> | Record<string, string>
+```
+
+**缓存机制：**
+- 当首次调用 `createIntl(locale, name)` 时，如果 `message[locale][name]` 不存在，会触发 `requestMessages`
+- 加载的消息会被缓存，后续相同 `locale` 和 `name` 的调用会直接使用缓存
+- 缓存的 key 格式为 `${locale}:${name}`
+
+**示例：**
+```javascript
+await fastify.register(fastifyIntl, {
+  requestMessages: async ({ locale, name }) => {
+    const response = await fetch(`https://api.example.com/messages/${locale}/${name}`);
+    return response.json();
+  }
+});
+
+// 第一次调用会触发远程请求
+const intl1 = await fastify.intl.createIntl('en-US', 'user');
+
+// 第二次调用使用缓存，不会触发远程请求
+const intl2 = await fastify.intl.createIntl('en-US', 'user');
+
+// 不同的 locale 或 name 会触发新的请求
+const intl3 = await fastify.intl.createIntl('zh-CN', 'user');
+```
 
 ### 请求属性
 

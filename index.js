@@ -44,91 +44,91 @@ module.exports = fp(async (fastify, options) => {
     });
   }
 
+  const createIntlInstance = async (locale, name) => {
+    name = name || options.moduleName || 'global';
+    const cacheKey = `${locale}:${name}`;
+
+    const cached = intlCache.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+
+    if (!message[locale]?.[name] && typeof options.requestMessages === 'function') {
+      try {
+        const remoteMessages = await options.requestMessages({ locale, name });
+        if (!message[locale]) {
+          message[locale] = {};
+        }
+        message[locale][name] = remoteMessages;
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    const currentMessages = message[locale]?.[name] || {};
+
+    const intlInstance = createIntl(
+      {
+        locale,
+        defaultLocale: options.defaultLocale,
+        messages: Object.assign({}, currentMessages)
+      },
+      cache
+    );
+
+    intlCache.set(cacheKey, intlInstance);
+    return intlInstance;
+  };
+
+  const getRequestLocale = request => {
+    const cacheKey = `${request.id}:locale`;
+    if (localeCache.has(cacheKey)) {
+      return localeCache.get(cacheKey);
+    }
+
+    const lang =
+      request.query?.lang ||
+      request.query?.language ||
+      request.cookies?.['x-user-locale'] ||
+      request.cookies?.['x-client-language'] ||
+      request.headers?.['x-user-locale'] ||
+      request.headers?.['x-client-language'] ||
+      request.headers?.['accept-language']?.split(',')[0] ||
+      options.defaultLocale;
+
+    const result = options.acceptLanguage === '*' || options.acceptLanguage.split(',').includes(lang) ? lang : options.defaultLocale;
+
+    localeCache.set(cacheKey, result);
+
+    return result;
+  };
+
+  const withLocale = request => {
+    return async moduleName => {
+      const locale = fastify[options.name].getRequestLocale(request);
+      const intl = await fastify[options.name].createIntl(locale, moduleName);
+      return {
+        locale,
+        intl,
+        t: (id, values) => intl.formatMessage({ id }, values)
+      };
+    };
+  };
+
   if (!fastify.hasDecorator(options.name)) {
+    const defaultIntl = await createIntlInstance(options.defaultLocale, options.moduleName);
+    const defaultT = (id, values) => {
+      return defaultIntl.formatMessage({ id }, values);
+    };
     fastify.register(require('@kne/fastify-namespace'), {
       name: options.name,
       options,
       modules: [
-        [
-          'createIntl',
-          async (locale, name) => {
-            name = name || options.moduleName || 'global';
-            const cacheKey = `${locale}:${name}`;
-
-            const cached = intlCache.get(cacheKey);
-            if (cached) {
-              return cached;
-            }
-
-            if (!message[name] && typeof options.requestMessages === 'function') {
-              try {
-                const remoteMessages = await options.requestMessages({ locale, name });
-                if (!message[locale]) {
-                  message[locale] = {};
-                }
-                if (!message[locale][name]) {
-                  message[locale][name] = {};
-                }
-                message[locale][name] = remoteMessages;
-              } catch (e) {
-                console.error(e);
-              }
-            }
-
-            const currentMessages = message[locale]?.[name] || {};
-
-            const intlInstance = createIntl(
-              {
-                locale,
-                defaultLocale: options.defaultLocale,
-                messages: Object.assign({}, currentMessages)
-              },
-              cache
-            );
-
-            intlCache.set(cacheKey, intlInstance);
-            return intlInstance;
-          }
-        ],
-        [
-          'getRequestLocale',
-          request => {
-            const cacheKey = `${request.id}:locale`;
-            if (localeCache.has(cacheKey)) {
-              return localeCache.get(cacheKey);
-            }
-
-            const lang =
-              request.query?.lang ||
-              request.query?.language ||
-              request.cookies?.['x-user-locale'] ||
-              request.cookies?.['x-client-language'] ||
-              request.headers?.['x-user-locale'] ||
-              request.headers?.['x-client-language'] ||
-              request.headers?.['accept-language']?.split(',')[0] ||
-              options.defaultLocale;
-
-            const result = options.acceptLanguage === '*' || options.acceptLanguage.split(',').includes(lang) ? lang : options.defaultLocale;
-
-            localeCache.set(cacheKey, result);
-
-            return result;
-          }
-        ],
-        [
-          'withLocale',
-          request => {
-            return async moduleName => {
-              const locale = fastify[options.name].getRequestLocale(request);
-              const intl = await fastify[options.name].createIntl(locale, moduleName);
-              return {
-                locale,
-                intl,
-                t: (id, values) => intl.formatMessage({ id }, values)
-              };
-            };
-          }
-        ]
+        ['createIntl', createIntlInstance],
+        ['getRequestLocale', getRequestLocale],
+        ['withLocale', withLocale],
+        ['defaultIntl', defaultIntl],
+        ['t', defaultT]
       ],
       onMount: name => {
         if (name === options.name) {

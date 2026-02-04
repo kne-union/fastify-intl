@@ -95,19 +95,24 @@ await fastify.register(fastifyIntl, {
 ```
 
 语言检测优先级：
-1. query.language
-2. cookies.language
-3. headers.language
+1. query.language / query.lang
+2. cookies.x-user-locale / cookies.x-client-language
+3. headers.x-user-locale / headers.x-client-language
 4. headers.accept-language
 5. defaultLocale
 
 ### 控制缓存大小
+
+插件使用 LRU 缓存来优化性能，支持两个级别的缓存：
 
 ```javascript
 await fastify.register(fastifyIntl, {
   cacheSize: 200
 });
 ```
+
+- `intlCache`: 缓存 `Intl` 实例，避免重复创建（LRU 策略，默认最多 100 个）
+- `localeCache`: 缓存请求级别的 locale 检测结果（Map 结构，无限制）
 
 ## 多模块支持
 

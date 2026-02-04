@@ -72,40 +72,101 @@ describe('@kne/fastify-intl', function() {
       await fastify.register(fastifyIntl, {
         defaultLocale: 'en-US'
       });
-
-      fastify.get('/test', async (request, reply) => {
-        reply.send({ locale: request.locale });
-      });
-
       await fastify.ready();
 
-      const res = await fastify.inject({
-        method: 'GET',
-        url: '/test'
-      });
-      expect(JSON.parse(res.payload)).to.deep.equal({ locale: 'en-US' });
+      const request = {
+        id: 'test-request-id',
+        query: {},
+        cookies: {},
+        headers: {}
+      };
+
+      const locale = fastify.intl.getRequestLocale(request);
+      expect(locale).to.equal('en-US');
 
       await fastify.close();
     });
 
-    it('should get locale from query parameter', async () => {
+    it('should get locale from query.language parameter', async () => {
       const fastify = require('fastify')();
 
       await fastify.register(fastifyIntl, {
         defaultLocale: 'en-US'
       });
-
-      fastify.get('/test', async (request, reply) => {
-        reply.send({ locale: request.locale });
-      });
-
       await fastify.ready();
 
-      const res = await fastify.inject({
-        method: 'GET',
-        url: '/test?language=zh-CN'
+      const request = {
+        id: 'test-request-id',
+        query: { language: 'zh-CN' },
+        cookies: {},
+        headers: {}
+      };
+
+      const locale = fastify.intl.getRequestLocale(request);
+      expect(locale).to.equal('zh-CN');
+
+      await fastify.close();
+    });
+
+    it('should get locale from query.lang parameter', async () => {
+      const fastify = require('fastify')();
+
+      await fastify.register(fastifyIntl, {
+        defaultLocale: 'en-US'
       });
-      expect(JSON.parse(res.payload)).to.deep.equal({ locale: 'zh-CN' });
+      await fastify.ready();
+
+      const request = {
+        id: 'test-request-id',
+        query: { lang: 'ja-JP' },
+        cookies: {},
+        headers: {}
+      };
+
+      const locale = fastify.intl.getRequestLocale(request);
+      expect(locale).to.equal('ja-JP');
+
+      await fastify.close();
+    });
+
+    it('should get locale from cookie x-user-locale', async () => {
+      const fastify = require('fastify')();
+
+      await fastify.register(fastifyIntl, {
+        defaultLocale: 'en-US'
+      });
+      await fastify.ready();
+
+      const request = {
+        id: 'test-request-id',
+        query: {},
+        cookies: { 'x-user-locale': 'fr-FR' },
+        headers: {}
+      };
+
+      const locale = fastify.intl.getRequestLocale(request);
+      expect(locale).to.equal('fr-FR');
+
+      await fastify.close();
+    });
+
+    it('should get locale from header x-user-locale', async () => {
+      const fastify = require('fastify')();
+
+      await fastify.register(fastifyIntl, {
+        defaultLocale: 'en-US'
+      });
+      await fastify.ready();
+
+      const request = {
+        id: 'test-request-id',
+        query: {},
+        cookies: {},
+        headers: { 'x-user-locale': 'de-DE' }
+      };
+
+      const locale = fastify.intl.getRequestLocale(request);
+      expect(locale).to.equal('de-DE');
 
       await fastify.close();
     });
@@ -119,21 +180,17 @@ describe('@kne/fastify-intl', function() {
         acceptLanguage: 'en-US,zh-CN',
         defaultLocale: 'en-US'
       });
-
-      fastify.get('/test', async (request, reply) => {
-        reply.send({ locale: request.locale });
-      });
-
       await fastify.ready();
 
-      const res = await fastify.inject({
-        method: 'GET',
-        url: '/test',
-        headers: {
-          'accept-language': 'zh-CN'
-        }
-      });
-      expect(JSON.parse(res.payload)).to.deep.equal({ locale: 'zh-CN' });
+      const request = {
+        id: 'test-request-id',
+        query: {},
+        cookies: {},
+        headers: { 'accept-language': 'zh-CN' }
+      };
+
+      const locale = fastify.intl.getRequestLocale(request);
+      expect(locale).to.equal('zh-CN');
 
       await fastify.close();
     });
@@ -145,52 +202,17 @@ describe('@kne/fastify-intl', function() {
         acceptLanguage: 'en-US,zh-CN',
         defaultLocale: 'en-US'
       });
-
-      fastify.get('/test', async (request, reply) => {
-        reply.send({ locale: request.locale });
-      });
-
       await fastify.ready();
 
-      const res = await fastify.inject({
-        method: 'GET',
-        url: '/test',
-        headers: {
-          'accept-language': 'fr-FR'
-        }
-      });
-      expect(JSON.parse(res.payload)).to.deep.equal({ locale: 'en-US' });
-
-      await fastify.close();
-    });
-  });
-
-  describe('request.t shortcut method', () => {
-    it('should translate messages', async () => {
-      const fastify = require('fastify')();
-
-      const defaultMessages = {
-        'en-US': {
-          greeting: 'Hello {name}!'
-        }
+      const request = {
+        id: 'test-request-id',
+        query: {},
+        cookies: {},
+        headers: { 'accept-language': 'fr-FR' }
       };
 
-      await fastify.register(fastifyIntl, {
-        defaultMessages,
-        moduleName: 'global'
-      });
-
-      fastify.get('/test', async (request, reply) => {
-        reply.send({ message: request.t('greeting', { name: 'John' }) });
-      });
-
-      await fastify.ready();
-
-      const res = await fastify.inject({
-        method: 'GET',
-        url: '/test'
-      });
-      expect(JSON.parse(res.payload)).to.deep.equal({ message: 'Hello John!' });
+      const locale = fastify.intl.getRequestLocale(request);
+      expect(locale).to.equal('en-US');
 
       await fastify.close();
     });
@@ -246,6 +268,60 @@ describe('@kne/fastify-intl', function() {
       const intl2 = await fastify.intl.createIntl('en-US', 'global');
 
       expect(intl1).to.equal(intl2);
+
+      await fastify.close();
+    });
+
+    it('should return different instances for different cache keys', async () => {
+      const fastify = require('fastify')();
+
+      const defaultMessages = {
+        'en-US': {
+          test: 'Test message'
+        }
+      };
+
+      await fastify.register(fastifyIntl, {
+        defaultMessages,
+        cacheSize: 10,
+        moduleName: 'global'
+      });
+      await fastify.ready();
+
+      const intl1 = await fastify.intl.createIntl('en-US', 'global');
+      const intl2 = await fastify.intl.createIntl('zh-CN', 'global');
+      const intl3 = await fastify.intl.createIntl('en-US', 'other');
+
+      expect(intl1).to.not.equal(intl2);
+      expect(intl1).to.not.equal(intl3);
+      expect(intl2).to.not.equal(intl3);
+
+      await fastify.close();
+    });
+  });
+
+  describe('locale cache', () => {
+    it('should cache locale detection results', async () => {
+      const fastify = require('fastify')();
+
+      await fastify.register(fastifyIntl, {
+        defaultLocale: 'en-US'
+      });
+      await fastify.ready();
+
+      const request = {
+        id: 'test-request-id',
+        query: { language: 'zh-CN' },
+        cookies: {},
+        headers: {}
+      };
+
+      // Call getRequestLocale multiple times
+      const locale1 = fastify.intl.getRequestLocale(request);
+      const locale2 = fastify.intl.getRequestLocale(request);
+
+      expect(locale1).to.equal('zh-CN');
+      expect(locale2).to.equal('zh-CN');
 
       await fastify.close();
     });

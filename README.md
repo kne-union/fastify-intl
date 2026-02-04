@@ -77,6 +77,12 @@ await fastify.register(fastifyIntl, {
 });
 ```
 
+**缓存机制：**
+- `requestMessages` 函数会根据 `locale` 和 `name` 参数自动缓存加载的消息
+- 首次调用 `createIntl(locale, name)` 时会触发远程加载
+- 相同 `locale` 和 `name` 的后续调用会直接使用缓存，不会重复请求
+- 缓存 key 格式为 `${locale}:${name}`
+
 ### 与命名空间集成
 
 ```javascript
@@ -217,7 +223,7 @@ await fastify.register(fastifyIntl, {
 | defaultLocale | 默认语言环境 | string | 'en-US' |
 | moduleName | 默认模块名称 | string | 'global' |
 | defaultMessages | 默认翻译消息对象 | object | {} |
-| requestMessages | 动态加载翻译消息的函数 | function\|null | null |
+| requestMessages | 动态加载翻译消息的函数，支持按 locale 和 name 缓存 | function\|null | null |
 | cacheSize | Intl 缓存大小 | number | 100 |
 
 ### 请求属性

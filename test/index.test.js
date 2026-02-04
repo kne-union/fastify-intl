@@ -1,7 +1,7 @@
 const { expect } = require('chai');
 const fastifyIntl = require('../index');
 
-describe('@kne/fastify-intl', function() {
+describe('@kne/fastify-intl', function () {
   describe('plugin registration with default options', () => {
     it('should add intl decorator', async () => {
       const fastify = require('fastify')();
@@ -229,6 +229,8 @@ describe('@kne/fastify-intl', function() {
       };
 
       await fastify.register(fastifyIntl, {
+        defaultLocale: 'en-US',
+        moduleName: 'test',
         requestMessages
       });
       await fastify.ready();
@@ -237,7 +239,6 @@ describe('@kne/fastify-intl', function() {
       const intl1 = await fastify.intl.createIntl('en-US', 'test');
       expect(intl1.formatMessage({ id: 'dynamic' })).to.equal('Dynamic message');
       expect(callCount).to.equal(1);
-
       // Second call should use cache
       const intl2 = await fastify.intl.createIntl('en-US', 'test');
       expect(intl2.formatMessage({ id: 'dynamic' })).to.equal('Dynamic message');

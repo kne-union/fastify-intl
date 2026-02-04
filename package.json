@@ -1,6 +1,6 @@
 {
   "name": "@kne/fastify-intl",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "`@kne/fastify-intl` 是一个专为 Fastify 项目设计的国际化解决方案插件。它基于业界成熟的 `@formatjs/intl` 库构建，提供了强大而灵活的多语言支持能力，帮助开发者轻松实现应用的国际化和本地化。",
   "main": "index.js",
   "types": "index.d.ts",

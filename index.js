@@ -116,10 +116,6 @@ module.exports = fp(async (fastify, options) => {
   };
 
   if (!fastify.hasDecorator(options.name)) {
-    const defaultIntl = await createIntlInstance(options.defaultLocale, options.moduleName);
-    const defaultT = (id, values) => {
-      return defaultIntl.formatMessage({ id }, values);
-    };
     fastify.register(require('@kne/fastify-namespace'), {
       name: options.name,
       options,
@@ -127,15 +123,22 @@ module.exports = fp(async (fastify, options) => {
         ['createIntl', createIntlInstance],
         ['getRequestLocale', getRequestLocale],
         ['withLocale', withLocale],
-        ['defaultIntl', defaultIntl],
-        ['t', defaultT]
+        [
+          't',
+          (id, values) => {
+            return fastify[options.name].defaultIntl.formatMessage({ id }, values);
+          }
+        ]
       ],
-      onMount: name => {
+      onMount: async name => {
         if (name === options.name) {
           return;
         }
         const locale = fastify.namespace.modules?.[name]?.locale;
         locale && loadMessage(locale, name);
+        if (name === options.moduleName) {
+          fastify[options.name].defaultIntl = await createIntlInstance(options.defaultLocale, options.moduleName);
+        }
       }
     });
     fastify.addHook('onRequest', async request => {

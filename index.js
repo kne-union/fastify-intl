@@ -44,10 +44,6 @@ module.exports = fp(async (fastify, options) => {
     });
   }
 
-  fastify.addHook('onRequest', async request => {
-    request.moduleName = options.moduleName;
-  });
-
   if (!fastify.hasDecorator(options.name)) {
     fastify.register(require('@kne/fastify-namespace'), {
       name: options.name,
@@ -115,7 +111,22 @@ module.exports = fp(async (fastify, options) => {
             const result = options.acceptLanguage === '*' || options.acceptLanguage.split(',').includes(lang) ? lang : options.defaultLocale;
 
             localeCache.set(cacheKey, result);
+
             return result;
+          }
+        ],
+        [
+          'withLocale',
+          request => {
+            return async moduleName => {
+              const locale = fastify[options.name].getRequestLocale(request);
+              const intl = await fastify[options.name].createIntl(locale, moduleName);
+              return {
+                locale,
+                intl,
+                t: (id, values) => intl.formatMessage({ id }, values)
+              };
+            };
           }
         ]
       ],
@@ -127,10 +138,12 @@ module.exports = fp(async (fastify, options) => {
         locale && loadMessage(locale, name);
       }
     });
-    fastify.addHook('preHandler', async request => {
-      request.locale = fastify[options.name].getRequestLocale(request);
-      request.intl = await fastify[options.name].createIntl(request.locale, request.moduleName);
-      request.t = (id, values) => request.intl.formatMessage({ id }, values);
+    fastify.addHook('onRequest', async request => {
+      request.withLocale = fastify[options.name].withLocale(request);
+      const props = await request.withLocale(options.moduleName);
+      Object.keys(props).forEach(name => {
+        request[name] = props[name];
+      });
     });
   }
 });

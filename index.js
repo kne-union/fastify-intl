@@ -80,6 +80,20 @@ module.exports = fp(async (fastify, options) => {
     return intlInstance;
   };
 
+  // Node fetch 默认带 `accept-language: *`，非法 locale 传给 createIntl 会抛 RangeError
+  const toValidLocale = value => {
+    const locale = typeof value === 'string' ? value.split(';')[0].trim() : '';
+    if (!locale || locale === '*') {
+      return null;
+    }
+    try {
+      Intl.getCanonicalLocales(locale);
+      return locale;
+    } catch (e) {
+      return null;
+    }
+  };
+
   const getRequestLocale = request => {
     const cacheKey = `${request.id}:locale`;
     if (localeCache.has(cacheKey)) {
@@ -87,14 +101,17 @@ module.exports = fp(async (fastify, options) => {
     }
 
     const lang =
-      request.query?.lang ||
-      request.query?.language ||
-      request.cookies?.['x-user-locale'] ||
-      request.cookies?.['x-client-language'] ||
-      request.headers?.['x-user-locale'] ||
-      request.headers?.['x-client-language'] ||
-      request.headers?.['accept-language']?.split(',')[0] ||
-      options.defaultLocale;
+      [
+        request.query?.lang,
+        request.query?.language,
+        request.cookies?.['x-user-locale'],
+        request.cookies?.['x-client-language'],
+        request.headers?.['x-user-locale'],
+        request.headers?.['x-client-language'],
+        request.headers?.['accept-language']?.split(',')[0]
+      ]
+        .map(toValidLocale)
+        .find(Boolean) || options.defaultLocale;
 
     const result = options.acceptLanguage === '*' || options.acceptLanguage.split(',').includes(lang) ? lang : options.defaultLocale;
 

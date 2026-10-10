@@ -218,6 +218,39 @@ describe('@kne/fastify-intl', function () {
     });
   });
 
+  describe('invalid locale fallback', () => {
+    it('should ignore wildcard and invalid locales', async () => {
+      const fastify = require('fastify')();
+
+      await fastify.register(fastifyIntl, {
+        defaultLocale: 'zh-CN'
+      });
+      await fastify.ready();
+
+      expect(fastify.intl.getRequestLocale({ id: 'r1', query: {}, cookies: {}, headers: { 'accept-language': '*' } })).to.equal('zh-CN');
+      expect(fastify.intl.getRequestLocale({ id: 'r2', query: { lang: 'zh_CN' }, cookies: {}, headers: {} })).to.equal('zh-CN');
+      expect(fastify.intl.getRequestLocale({ id: 'r3', query: { lang: 'not a locale' }, cookies: {}, headers: { 'accept-language': 'en-US' } })).to.equal('en-US');
+      expect(fastify.intl.getRequestLocale({ id: 'r4', query: {}, cookies: {}, headers: { 'accept-language': 'en-GB;q=0.9,en;q=0.8' } })).to.equal('en-GB');
+
+      await fastify.close();
+    });
+
+    it('should not fail requests with accept-language wildcard', async () => {
+      const fastify = require('fastify')();
+
+      await fastify.register(fastifyIntl, {
+        defaultLocale: 'en-US'
+      });
+      fastify.get('/', async request => ({ locale: request.locale || null }));
+      await fastify.ready();
+
+      const res = await fastify.inject({ method: 'GET', url: '/', headers: { 'accept-language': '*' } });
+      expect(res.statusCode).to.equal(200);
+
+      await fastify.close();
+    });
+  });
+
   describe('requestMessages dynamic loading', () => {
     it('should load messages remotely and cache', async () => {
       const fastify = require('fastify')();

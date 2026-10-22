@@ -81,8 +81,9 @@ module.exports = fp(async (fastify, options) => {
     return intlInstance;
   };
 
-  // messageValues 里可能带底层 Error，格式化时取其 message
-  const plainValues = values => values && Object.fromEntries(Object.entries(values).map(([key, value]) => [key, value instanceof Error ? value.message : value]));
+  // messageValues 里可能带底层 Error（取其 message）或 Error 数组（逐项取 message 后以 ', ' 连接）
+  const toPlain = value => (Array.isArray(value) ? value.map(toPlain).join(', ') : value instanceof Error ? value.message : value);
+  const plainValues = values => values && Object.fromEntries(Object.entries(values).map(([key, value]) => [key, toPlain(value)]));
 
   const formatWith = (intl, messageId, values) => (intl && intl.messages[messageId] ? intl.formatMessage({ id: messageId }, plainValues(values)) : undefined);
 
@@ -105,6 +106,11 @@ module.exports = fp(async (fastify, options) => {
   const translateError = async (request, error) => {
     if (!(error && error.intlName && error.messageId)) {
       return error;
+    }
+    for (const value of Object.values(error.messageValues || {})) {
+      for (const item of [].concat(value)) {
+        await translateError(request, item);
+      }
     }
     const locales = [...new Set([getRequestLocale(request), options.defaultLocale])];
     for (const locale of locales) {

@@ -371,8 +371,8 @@ describe('@kne/fastify-intl', function () {
           [
             'locale',
             {
-              'zh-CN': { notFound: '项目{id}不存在', zhOnly: '仅中文' },
-              'en-US': { notFound: 'Project {id} not found' }
+              'zh-CN': { notFound: '项目{id}不存在', zhOnly: '仅中文', invalid: '数据验证失败: {detail}', row: '第{row}行: {errors}', nameRequired: '姓名必填', emailRequired: '邮箱必填' },
+              'en-US': { notFound: 'Project {id} not found', invalid: 'Validation failed: {detail}', row: 'Row {row}: {errors}', nameRequired: 'Name is required', emailRequired: 'Email is required' }
             }
           ]
         ]
@@ -394,6 +394,11 @@ describe('@kne/fastify-intl', function () {
       });
       fastify.get('/missing', async () => {
         throw fastify.intl.createError('biz', 'missingKey');
+      });
+      fastify.get('/nested', async () => {
+        const { createError } = fastify.intl;
+        const errors = ['nameRequired', 'emailRequired'].map(id => createError('biz', id));
+        throw createError('biz', 'invalid', { detail: createError('biz', 'row', { row: 2, errors }) });
       });
       fastify.get('/plain', async () => {
         throw new Error('原始错误');
@@ -440,6 +445,15 @@ describe('@kne/fastify-intl', function () {
       const fastify = await createApp();
       const res = await fastify.inject({ url: '/missing', headers: { 'x-user-locale': 'en-US' } });
       expect(JSON.parse(res.body).message).to.equal('missingKey');
+      await fastify.close();
+    });
+
+    it('should translate nested error values and arrays', async () => {
+      const fastify = await createApp();
+      const en = await fastify.inject({ url: '/nested', headers: { 'x-user-locale': 'en-US' } });
+      expect(JSON.parse(en.body).message).to.equal('Validation failed: Row 2: Name is required, Email is required');
+      const zh = await fastify.inject({ url: '/nested' });
+      expect(JSON.parse(zh.body).message).to.equal('数据验证失败: 第2行: 姓名必填, 邮箱必填');
       await fastify.close();
     });
 

@@ -96,7 +96,7 @@ const intl3 = await fastify.intl.createIntl('zh-CN', 'user');
 |-----|----|----|
 | name | 语言包所属模块名（namespace 名），为空时取 moduleName | string |
 | messageId | 消息 ID | string |
-| values | 格式化参数，值为 Error 时取其 message | object |
+| values | 格式化参数；值为 Error 时取其 message，为数组时逐项取值后以 `, ` 连接；值（或数组项）为 `createError` 创建的错误时会一并按请求语言翻译 | object |
 | options.ErrorClass | 错误类，如 http-errors 的 `Forbidden`，缺省 `Error` | Function |
 
 返回值：带 `intlName`、`messageId`、`messageValues` 标记的 Error

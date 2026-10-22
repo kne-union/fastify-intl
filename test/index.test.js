@@ -360,4 +360,101 @@ describe('@kne/fastify-intl', function () {
       await fastify.close();
     });
   });
+
+  describe('createError and translateError', () => {
+    const createApp = async (intlOptions = {}) => {
+      const fastify = require('fastify')();
+      await fastify.register(fastifyIntl, Object.assign({ defaultLocale: 'zh-CN' }, intlOptions));
+      await fastify.register(require('@kne/fastify-namespace'), {
+        name: 'biz',
+        modules: [
+          [
+            'locale',
+            {
+              'zh-CN': { notFound: '项目{id}不存在', zhOnly: '仅中文' },
+              'en-US': { notFound: 'Project {id} not found' }
+            }
+          ]
+        ]
+      });
+      fastify.get('/not-found', async () => {
+        throw fastify.intl.createError('biz', 'notFound', { id: 7 });
+      });
+      fastify.get('/forbidden', async () => {
+        class Forbidden extends Error {
+          constructor(message) {
+            super(message);
+            this.statusCode = 403;
+          }
+        }
+        throw fastify.intl.createError('biz', 'notFound', { id: 8 }, { ErrorClass: Forbidden });
+      });
+      fastify.get('/zh-only', async () => {
+        throw fastify.intl.createError('biz', 'zhOnly');
+      });
+      fastify.get('/missing', async () => {
+        throw fastify.intl.createError('biz', 'missingKey');
+      });
+      fastify.get('/plain', async () => {
+        throw new Error('原始错误');
+      });
+      await fastify.ready();
+      return fastify;
+    };
+
+    it('should prefill message with default locale', async () => {
+      const fastify = await createApp();
+      const error = fastify.intl.createError('biz', 'notFound', { id: 1 });
+      expect(error).to.be.instanceOf(Error);
+      expect(error.message).to.equal('项目1不存在');
+      expect(error.messageId).to.equal('notFound');
+      expect(error.intlName).to.equal('biz');
+      await fastify.close();
+    });
+
+    it('should translate error by request locale', async () => {
+      const fastify = await createApp();
+      const en = await fastify.inject({ url: '/not-found', headers: { 'x-user-locale': 'en-US' } });
+      expect(JSON.parse(en.body).message).to.equal('Project 7 not found');
+      const zh = await fastify.inject({ url: '/not-found' });
+      expect(JSON.parse(zh.body).message).to.equal('项目7不存在');
+      await fastify.close();
+    });
+
+    it('should keep status code of ErrorClass', async () => {
+      const fastify = await createApp();
+      const res = await fastify.inject({ url: '/forbidden', headers: { 'x-user-locale': 'en-US' } });
+      expect(res.statusCode).to.equal(403);
+      expect(JSON.parse(res.body).message).to.equal('Project 8 not found');
+      await fastify.close();
+    });
+
+    it('should fallback to default locale when key missing in request locale', async () => {
+      const fastify = await createApp();
+      const res = await fastify.inject({ url: '/zh-only', headers: { 'x-user-locale': 'en-US' } });
+      expect(JSON.parse(res.body).message).to.equal('仅中文');
+      await fastify.close();
+    });
+
+    it('should fallback to messageId when key missing everywhere', async () => {
+      const fastify = await createApp();
+      const res = await fastify.inject({ url: '/missing', headers: { 'x-user-locale': 'en-US' } });
+      expect(JSON.parse(res.body).message).to.equal('missingKey');
+      await fastify.close();
+    });
+
+    it('should not touch untagged errors', async () => {
+      const fastify = await createApp();
+      const res = await fastify.inject({ url: '/plain', headers: { 'x-user-locale': 'en-US' } });
+      expect(JSON.parse(res.body).message).to.equal('原始错误');
+      await fastify.close();
+    });
+
+    it('should skip translation when translateError is false', async () => {
+      const fastify = await createApp({ translateError: false });
+      const res = await fastify.inject({ url: '/not-found', headers: { 'x-user-locale': 'en-US' } });
+      expect(JSON.parse(res.body).message).to.equal('项目7不存在');
+      await fastify.close();
+    });
+  });
 });

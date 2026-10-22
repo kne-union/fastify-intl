@@ -6,6 +6,13 @@ declare module 'fastify' {
     [decoratorName: string]: {
       createIntl(locale: string, name?: string): Promise<IntlShape<string>>;
       getRequestLocale(request: FastifyRequest): string;
+      createError(
+        name: string | null,
+        messageId: string,
+        values?: Record<string, unknown>,
+        options?: { ErrorClass?: new (message: string) => Error }
+      ): Error & { intlName: string; messageId: string; messageValues?: Record<string, unknown> };
+      translateError<T>(request: FastifyRequest, error: T): Promise<T>;
     };
   }
 
@@ -48,6 +55,8 @@ export interface FastifyIntlOptions {
   }) => Promise<Record<string, string>> | Record<string, string>;
   /** 缓存大小 */
   cacheSize?: number;
+  /** 是否注册 onError 钩子翻译 createError 创建的错误，默认 true */
+  translateError?: boolean;
 }
 
 declare const fastifyIntl: FastifyPlugin<FastifyIntlOptions>;

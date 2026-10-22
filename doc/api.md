@@ -9,6 +9,7 @@
 | defaultMessages | 默认翻译消息对象 | object | {} |
 | requestMessages | 动态加载翻译消息的函数，支持按 locale 和 name 缓存 | function\|null | null |
 | cacheSize | Intl 缓存大小 | number | 100 |
+| translateError | 是否注册 onError 钩子，按请求语言翻译 `createError` 创建的错误 | boolean | true |
 
 #### requestMessages 说明
 
@@ -86,3 +87,34 @@ const intl3 = await fastify.intl.createIntl('zh-CN', 'user');
 | values | 格式化参数 | object |
 
 返回值：翻译后的字符串
+
+#### createError(name, messageId, values, options)
+
+创建可按请求语言翻译的错误，适合在拿不到 `request` 的 service 中抛出。`message` 先用 `defaultLocale` 的已加载语言包格式化（取不到则为 `messageId`），响应前由 onError 钩子按请求语言替换。
+
+| 参数 | 说明 | 类型 |
+|-----|----|----|
+| name | 语言包所属模块名（namespace 名），为空时取 moduleName | string |
+| messageId | 消息 ID | string |
+| values | 格式化参数，值为 Error 时取其 message | object |
+| options.ErrorClass | 错误类，如 http-errors 的 `Forbidden`，缺省 `Error` | Function |
+
+返回值：带 `intlName`、`messageId`、`messageValues` 标记的 Error
+
+```javascript
+fastify.register(require('@kne/fastify-namespace'), {
+  name: 'project',
+  modules: [
+    ['locale', { 'zh-CN': { projectNotFound: '项目{id}不存在' }, 'en-US': { projectNotFound: 'Project {id} not found' } }]
+  ]
+});
+
+// service 中
+throw fastify.intl.createError('project', 'projectNotFound', { id });
+```
+
+翻译顺序：请求语言 → defaultLocale → 保留原 message。未带标记的错误不处理。
+
+#### translateError(request, error)
+
+按请求语言翻译 `createError` 创建的错误，返回同一个 error 对象。`translateError: false` 时可在自定义错误处理中手动调用。

@@ -15,7 +15,8 @@ module.exports = fp(async (fastify, options) => {
       moduleName: 'global',
       defaultMessages: {},
       requestMessages: null,
-      cacheSize: 100
+      cacheSize: 100,
+      translateError: true
     },
     options
   );
@@ -80,6 +81,48 @@ module.exports = fp(async (fastify, options) => {
     return intlInstance;
   };
 
+  // messageValues 里可能带底层 Error（取其 message）或 Error 数组（逐项取 message 后以 ', ' 连接）
+  const toPlain = value => (Array.isArray(value) ? value.map(toPlain).join(', ') : value instanceof Error ? value.message : value);
+  const plainValues = values => values && Object.fromEntries(Object.entries(values).map(([key, value]) => [key, toPlain(value)]));
+
+  const formatWith = (intl, messageId, values) => (intl && intl.messages[messageId] ? intl.formatMessage({ id: messageId }, plainValues(values)) : undefined);
+
+  // createError 需同步拿到兜底文案，只用已加载的语言包，不触发 requestMessages
+  const formatLoaded = (locale, name, messageId, values) => {
+    const messages = message[locale]?.[name];
+    if (!messages || !messages[messageId]) {
+      return undefined;
+    }
+    return formatWith(createIntl({ locale, defaultLocale: options.defaultLocale, messages }, cache), messageId, values);
+  };
+
+  const createError = (name, messageId, values, { ErrorClass } = {}) => {
+    name = name || options.moduleName || 'global';
+    const text = formatLoaded(options.defaultLocale, name, messageId, values) ?? messageId;
+    const error = ErrorClass ? new ErrorClass(text) : new Error(text);
+    return Object.assign(error, { intlName: name, messageId, messageValues: values });
+  };
+
+  const translateError = async (request, error) => {
+    if (!(error && error.intlName && error.messageId)) {
+      return error;
+    }
+    for (const value of Object.values(error.messageValues || {})) {
+      for (const item of [].concat(value)) {
+        await translateError(request, item);
+      }
+    }
+    const locales = [...new Set([getRequestLocale(request), options.defaultLocale])];
+    for (const locale of locales) {
+      const text = formatWith(await createIntlInstance(locale, error.intlName), error.messageId, error.messageValues);
+      if (text !== undefined) {
+        error.message = text;
+        break;
+      }
+    }
+    return error;
+  };
+
   // Node fetch 默认带 `accept-language: *`，非法 locale 传给 createIntl 会抛 RangeError
   const toValidLocale = value => {
     const locale = typeof value === 'string' ? value.split(';')[0].trim() : '';
@@ -140,6 +183,8 @@ module.exports = fp(async (fastify, options) => {
         ['createIntl', createIntlInstance],
         ['getRequestLocale', getRequestLocale],
         ['withLocale', withLocale],
+        ['createError', createError],
+        ['translateError', translateError],
         [
           't',
           (id, values) => {
@@ -165,5 +210,10 @@ module.exports = fp(async (fastify, options) => {
         request[name] = props[name];
       });
     });
+    if (options.translateError) {
+      fastify.addHook('onError', async (request, reply, error) => {
+        await translateError(request, error);
+      });
+    }
   }
 });

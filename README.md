@@ -1,18 +1,14 @@
-
 # fastify-intl
-
 
 ### 描述
 
 `@kne/fastify-intl` 是一个专为 Fastify 项目设计的国际化解决方案插件。它基于业界成熟的 `@formatjs/intl` 库构建，提供了强大而灵活的多语言支持能力，帮助开发者轻松实现应用的国际化和本地化。
-
 
 ### 安装
 
 ```shell
 npm i --save @kne/fastify-intl
 ```
-
 
 ### 概述
 
@@ -22,9 +18,9 @@ npm i --save @kne/fastify-intl
 
 `@kne/fastify-intl` 提供了简洁直观的 API，在请求对象上直接暴露 `locale`、`intl` 和 `t` 等属性，让国际化操作变得轻而易举。它还支持动态加载远程语言包，配合智能缓存机制，既保证了性能又提供了足够的扩展性。无论是小型项目还是大型企业级应用，这款插件都能满足各种国际化场景的需求。
 
-### 基础使用
+##### 基础使用
 
-#### 1. 注册插件
+###### 1. 注册插件
 
 ```javascript
 const fastify = require('fastify')();
@@ -33,7 +29,7 @@ const fastifyIntl = require('@kne/fastify-intl');
 await fastify.register(fastifyIntl);
 ```
 
-#### 2. 配置默认翻译消息
+###### 2. 配置默认翻译消息
 
 ```javascript
 await fastify.register(fastifyIntl, {
@@ -50,7 +46,7 @@ await fastify.register(fastifyIntl, {
 });
 ```
 
-#### 3. 在路由中使用
+###### 3. 在路由中使用
 
 ```javascript
 fastify.get('/hello', async (request, reply) => {
@@ -66,7 +62,7 @@ fastify.get('/welcome', async (request, reply) => {
 });
 ```
 
-### 动态加载翻译消息
+##### 动态加载翻译消息
 
 ```javascript
 await fastify.register(fastifyIntl, {
@@ -77,7 +73,7 @@ await fastify.register(fastifyIntl, {
 });
 ```
 
-### 与命名空间集成
+##### 与命名空间集成
 
 ```javascript
 await fastify.register(require('@kne/fastify-namespace'));
@@ -103,7 +99,7 @@ fastify.namespace.order = {
 };
 ```
 
-### 自定义语言检测顺序
+##### 自定义语言检测顺序
 
 ```javascript
 await fastify.register(fastifyIntl, {
@@ -119,7 +115,7 @@ await fastify.register(fastifyIntl, {
 4. headers.accept-language
 5. defaultLocale
 
-### 控制缓存大小
+##### 控制缓存大小
 
 插件使用 LRU 缓存来优化性能，支持两个级别的缓存：
 
@@ -132,7 +128,7 @@ await fastify.register(fastifyIntl, {
 - `intlCache`: 缓存 `Intl` 实例，避免重复创建（LRU 策略，默认最多 100 个）
 - `localeCache`: 缓存请求级别的 locale 检测结果（Map 结构，无限制）
 
-## 多模块支持
+#### 多模块支持
 
 ```javascript
 await fastify.register(fastifyIntl, {
@@ -149,11 +145,11 @@ fastify.get('/admin', async (request, reply) => {
 });
 ```
 
-### Q: 如何处理缺失的翻译？
+##### Q: 如何处理缺失的翻译？
 
 插件会自动回退到 `defaultLocale`，确保始终有可用的翻译。
 
-### Q: 如何支持嵌套的翻译消息？
+##### Q: 如何支持嵌套的翻译消息？
 
 消息对象支持嵌套结构：
 
@@ -176,7 +172,7 @@ fastify.get('/admin', async (request, reply) => {
 request.t('user.profile.title')
 ```
 
-### Q: 如何处理复数形式？
+##### Q: 如何处理复数形式？
 
 使用 ICU MessageFormat 语法：
 
@@ -190,7 +186,7 @@ request.t('user.profile.title')
 request.t('itemCount', { count: 5 }) // "You have 5 items"
 ```
 
-### Q: 如何在生产环境禁用动态加载？
+##### Q: 如何在生产环境禁用动态加载？
 
 ```javascript
 await fastify.register(fastifyIntl, {
@@ -202,13 +198,9 @@ await fastify.register(fastifyIntl, {
 
 ### 示例
 
-#### 示例代码
-
-
-
 ### API
 
-### 配置选项
+#### 配置选项
 
 | 属性名 | 说明 | 类型 | 默认值 |
 |-----|----|----|-----|
@@ -219,8 +211,9 @@ await fastify.register(fastifyIntl, {
 | defaultMessages | 默认翻译消息对象 | object | {} |
 | requestMessages | 动态加载翻译消息的函数，支持按 locale 和 name 缓存 | function\|null | null |
 | cacheSize | Intl 缓存大小 | number | 100 |
+| translateError | 是否注册 onError 钩子，按请求语言翻译 `createError` 创建的错误 | boolean | true |
 
-#### requestMessages 说明
+##### requestMessages 说明
 
 `requestMessages` 函数用于动态加载远程翻译消息。该函数会根据 `locale` 和 `name` 参数进行缓存，避免重复加载。
 
@@ -256,14 +249,14 @@ const intl2 = await fastify.intl.createIntl('en-US', 'user');
 const intl3 = await fastify.intl.createIntl('zh-CN', 'user');
 ```
 
-### 请求属性
+#### 请求属性
 
 | 属性名 | 说明 | 类型 |
 |-----|----|----|
 | request.locale | 当前请求的语言环境 | string |
 | request.intl | 国际化格式化对象 | IntlShape |
 | request.moduleName | 当前模块名称 | string |
-### 方法
+#### 方法
 
 创建一个国际化格式化实例。
 
@@ -274,7 +267,7 @@ const intl3 = await fastify.intl.createIntl('zh-CN', 'user');
 
 返回值：`IntlShape` 对象
 
-#### getRequestLocale(request)
+##### getRequestLocale(request)
 
 从请求中获取语言环境。
 
@@ -286,7 +279,7 @@ const intl3 = await fastify.intl.createIntl('zh-CN', 'user');
 
 检测顺序：query.language / query.lang → cookies.x-user-locale / cookies.x-client-language → headers.x-user-locale / headers.x-client-language → headers.accept-language → defaultLocale
 
-#### request.t(id, values)
+##### request.t(id, values)
 
 翻译消息的快捷方法。
 
@@ -297,3 +290,33 @@ const intl3 = await fastify.intl.createIntl('zh-CN', 'user');
 
 返回值：翻译后的字符串
 
+##### createError(name, messageId, values, options)
+
+创建可按请求语言翻译的错误，适合在拿不到 `request` 的 service 中抛出。`message` 先用 `defaultLocale` 的已加载语言包格式化（取不到则为 `messageId`），响应前由 onError 钩子按请求语言替换。
+
+| 参数 | 说明 | 类型 |
+|-----|----|----|
+| name | 语言包所属模块名（namespace 名），为空时取 moduleName | string |
+| messageId | 消息 ID | string |
+| values | 格式化参数；值为 Error 时取其 message，为数组时逐项取值后以 `, ` 连接；值（或数组项）为 `createError` 创建的错误时会一并按请求语言翻译 | object |
+| options.ErrorClass | 错误类，如 http-errors 的 `Forbidden`，缺省 `Error` | Function |
+
+返回值：带 `intlName`、`messageId`、`messageValues` 标记的 Error
+
+```javascript
+fastify.register(require('@kne/fastify-namespace'), {
+  name: 'project',
+  modules: [
+    ['locale', { 'zh-CN': { projectNotFound: '项目{id}不存在' }, 'en-US': { projectNotFound: 'Project {id} not found' } }]
+  ]
+});
+
+// service 中
+throw fastify.intl.createError('project', 'projectNotFound', { id });
+```
+
+翻译顺序：请求语言 → defaultLocale → 保留原 message。未带标记的错误不处理。
+
+##### translateError(request, error)
+
+按请求语言翻译 `createError` 创建的错误，返回同一个 error 对象。`translateError: false` 时可在自定义错误处理中手动调用。
